@@ -43,6 +43,8 @@ Contact us at admin [at] embeddedadventures.com
 #include "ea_bitmaps.h"
 
 #define		F_SSD1607	1000000UL
+#define		EPD_HT	200
+#define		EPD_WD	200	
 
 class SSD1607 {
 private:
@@ -55,7 +57,6 @@ private:
 	void	write_command(uns8 cmd);
 	void	write_command(uns8 cmd, uns8 param);
 	void	write_command(uns8* dataPtr, uns8 dataLen);
-	void	draw_logo(draw_x_type x, draw_y_type y);
 	
 public:
 	SSD1607(uns8 cs, uns8 dc, uns8 busy, uns8 rst);

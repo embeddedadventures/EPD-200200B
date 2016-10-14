@@ -35,8 +35,6 @@ Contact us at admin [at] embeddedadventures.com
 #include "SSD1607.h"
 
 #ifdef	GDEP015OC1
-	#define		EPD_HT	200
-	#define		EPD_WD	200	
 	uns8 LUT_full[31] = {
 	0x32,	// command
 /*	0x11,0x11,0x10,0x02,	// full
@@ -165,11 +163,7 @@ void SSD1607::write_command(uns8* dataPtr, uns8 dataLen) {
 	
 }
 
-void SSD1607::init() {
-	draw_init(EPD_HT, EPD_WD, 1);
-	delay(1);
-	draw_fonts_init();
-	
+void SSD1607::init() {	
 	digitalWrite(_rst, LOW);
 	delay(100);
 	digitalWrite(_rst, HIGH);
@@ -188,19 +182,7 @@ void SSD1607::init() {
 	delay(100);
 	
 	
-	draw_logo(70, 175);
-}
-
-void SSD1607::draw_logo(draw_x_type x, draw_y_type y) {
-	draw_clear_screen();
-	delay(100);
-	draw_bitmap(x, y-60, 1, embedded_bitmap);
-	draw_bitmap(x, y-75, 1, adventures_bitmap);
-	draw_bitmap(x, y, 1, e_big_bitmap);
-	draw_bitmap(x+30, y, 1, a_big_bitmap);
-	draw_fonts_print_str(DRAW_FONT_7NORMAL_ID, x-5, y - 100, 128, 0, 2, "EPD-200200B");
-	draw_fonts_print_str(DRAW_FONT_7NORMAL_ID, x-30, y - 115, 128, 0, 2, "200X200 EPAPER DISPLAY");
-	draw_paint();
+	//draw_logo(70, 175);
 }
 
 void SSD1607::power_on() {
@@ -264,7 +246,8 @@ void SSD1607::write_ram_rev(uns8 xSize, uns32 ySize, uns8* frameBuffer) {
 	  frameBuffer++;
 	 }
 	}
-	} else {  
+	} 
+	else {  
 	for(i=0;i<ySize;i++) {
 	 for(j=0;j<xSize;j++) {
 	  SPI.transfer(BitReverseTable256[*frameBuffer]);
