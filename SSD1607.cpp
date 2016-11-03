@@ -34,7 +34,7 @@ Contact us at admin [at] embeddedadventures.com
 
 #include "SSD1607.h"
 
-#ifdef	GDEP015OC1
+#ifdef	EPD200200B
 	uns8 LUT_full[31] = {
 	0x32,	// command
 /*	0x11,0x11,0x10,0x02,	// full
