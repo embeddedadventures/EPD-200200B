@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2016, Embedded Adventures, www.embeddedadventures.com
+Copyright (c) 2017, Embedded Adventures, www.embeddedadventures.com
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,18 @@ THE POSSIBILITY OF SUCH DAMAGE.
 Contact us at admin [at] embeddedadventures.com
 */
 
+//EPD-200200B ePaper Display Arduino library
+//Written originally by Embedded Adventures
+
 #include "SSD1607.h"
+
+#ifdef DEBUG_EPD
+	#define DEBUG(x)	serial_print_nl(x)
+	#define DEBUGLNX(x)	serial_print_int_hex(x);  serial_print_nl()
+#else
+	#define DEBUG(x)
+	#define DEBUGLNX(x)
+#endif
 
 #ifdef	EPD200200B
 	uns8 LUT_full[31] = {
@@ -114,6 +125,7 @@ SSD1607::SSD1607(uns8 cs, uns8 dc, uns8 busy, uns8 rst) {
 	_busy = busy;
 	_rst = rst;
 	_inverted = false;
+	_spiEmulated = false;
 	
 	SPI.begin();
 	SPI.beginTransaction(SPISettings(F_SSD1607, MSBFIRST, SPI_MODE2));
@@ -124,22 +136,56 @@ SSD1607::SSD1607(uns8 cs, uns8 dc, uns8 busy, uns8 rst) {
 	pinMode(_rst, OUTPUT);
 }
 
+SSD1607::SSD1607(uns8 data, uns8 clk, uns8 cs, uns8 dc, uns8 busy, uns8 rst) {
+	_cs = cs;
+	_dc = dc;
+	_busy = busy;
+	_rst = rst;
+	_data = data;
+	_clk = clk;
+	_inverted = false;
+	_spiEmulated = true;
+	
+	pinMode(_dc, OUTPUT);
+	pinMode(_cs, OUTPUT);
+	pinMode(_busy, INPUT);
+	pinMode(_rst, OUTPUT);
+	pinMode(_data, OUTPUT);
+	pinMode(_clk, OUTPUT);
+	digitalWrite(_clk, HIGH);
+}
+
 void SSD1607::write_command(uns8 cmd) {
 	digitalWrite(_cs, LOW);
 	digitalWrite(_dc, LOW);
-	SPI.transfer(cmd);
+
+	if (_spiEmulated)
+		shiftOut(_data, _clk, MSBFIRST, cmd);
+	else
+		SPI.transfer(cmd);
+	
 	digitalWrite(_cs, HIGH);
 }
 
 void SSD1607::write_command(uns8 cmd, uns8 param) {
 	while(digitalRead(_busy) == HIGH) {	}
-	Serial.println("Not busy!");
+	DEBUG("Not busy!");
 	
 	digitalWrite(_cs, LOW);
 	digitalWrite(_dc, LOW);
-	SPI.transfer(cmd);
+	
+	if (_spiEmulated)
+		shiftOut(_data, _clk, MSBFIRST, cmd);
+	else
+		SPI.transfer(cmd);
 	digitalWrite(_dc, HIGH);
-	SPI.transfer(param);
+	
+	if (_spiEmulated)
+		shiftOut(_data, _clk, MSBFIRST, param);
+	else
+		SPI.transfer(param);
+	
+	
 	digitalWrite(_cs, HIGH);
 	
 }
@@ -150,12 +196,21 @@ void SSD1607::write_command(uns8* dataPtr, uns8 dataLen) {
 	
 	digitalWrite(_cs, LOW);
 	digitalWrite(_dc, LOW);
-	SPI.transfer(*temp);
+	
+	if (_spiEmulated)
+		shiftOut(_data, _clk, MSBFIRST, *temp);
+	else
+		SPI.transfer(*temp);
+	
 	temp++;
 	digitalWrite(_dc, HIGH);
 	
 	for (int i = 1; i < dataLen; i++) {
-		SPI.transfer(*temp);
+		//SPI.transfer(*temp);
+		if (_spiEmulated)
+			shiftOut(_data, _clk, MSBFIRST, *temp);
+		else
+			SPI.transfer(*temp);
 		temp++;
 	}
 	
@@ -174,15 +229,11 @@ void SSD1607::init() {
 	write_command(DummyLine, sizeof(DummyLine));	// dummy line per gate
 	write_command(GateTime, sizeof(GateTime));		// Gage time setting
 	write_command(RamDataEntryMode, sizeof(RamDataEntryMode));	// X increase, Y decrease
-	
 	set_ram_area(0x00,(EPD_WD-1)/8,(EPD_HT-1)%256,(EPD_HT-1)/256,0x00,0x00);	// X-source area,Y-gage area
-    set_ram_ptr(0x00,(EPD_HT-1)%256,(EPD_HT-1)/256);	// set ram
+	set_ram_ptr(0x00,(EPD_HT-1)%256,(EPD_HT-1)/256);	// set ram
 	write_command(&LUT_full[0], sizeof(LUT_full));
 	power_on();
 	delay(100);
-	
-	
-	//draw_logo(70, 175);
 }
 
 void SSD1607::power_on() {
@@ -226,45 +277,51 @@ void SSD1607::write_ram_rev(uns8 xSize, uns32 ySize, uns8* frameBuffer) {
 	}
 	xSize = xSize/8;
 
-	//while(isEPD_W21_BUSY == 1); //wait
-	//ReadBusy();   
+ 
 	while(digitalRead(_busy) == HIGH) {	}
-	Serial.println("Not busy!");
+	DEBUG("Not busy!");
 
 	digitalWrite(_cs, LOW);
 	digitalWrite(_dc, LOW);
 
-	SPI.transfer(0x24);
-
-	//EPD_W21_DC_1;   //data write
+	if (_spiEmulated)
+		shiftOut(_data, _clk, MSBFIRST, 0x24);
+	else
+		SPI.transfer(0x24);
+	
 	digitalWrite(_dc, HIGH);
 
 	if (_inverted) {
-	for(i=0;i<ySize;i++) {
-	 for(j=0;j<xSize;j++) {
-	  SPI.transfer(~BitReverseTable256[*frameBuffer]);
-	  frameBuffer++;
-	 }
-	}
+		for(i = 0; i < ySize; i++) {
+			for(j = 0; j < xSize; j++) {
+				if (_spiEmulated)
+					shiftOut(_data, _clk, MSBFIRST, (~BitReverseTable256[*frameBuffer]));
+				else
+					SPI.transfer(~BitReverseTable256[*frameBuffer]);
+				frameBuffer++;
+			}
+		}
 	} 
 	else {  
-	for(i=0;i<ySize;i++) {
-	 for(j=0;j<xSize;j++) {
-	  SPI.transfer(BitReverseTable256[*frameBuffer]);
-	  frameBuffer++;
-	 }
-	}
+		for(i = 0; i < ySize; i++) {
+			for(j = 0; j < xSize; j++) {
+				if (_spiEmulated)
+					shiftOut(_data, _clk, MSBFIRST, (~BitReverseTable256[*frameBuffer]));
+				else
+					SPI.transfer(~BitReverseTable256[*frameBuffer]);
+				frameBuffer++;
+			}
+		}
 	}  
-	//EPD_W21_CS_1;
 	digitalWrite(_cs, HIGH);
 }
 
 void SSD1607::displayFullRev(uns8* frameBuffer) {
-	 set_ram_ptr(0x00,(EPD_HT-1)%256,(EPD_HT-1)/256);	// set ram
-	 write_ram_rev(EPD_WD, EPD_HT, &frameBuffer[0]);
-	 write_command(0x22, 0xC7);
-	 write_command(0x20);
-	 write_command(0xFF);
+	set_ram_ptr(0x00,(EPD_HT-1)%256,(EPD_HT-1)/256);	// set ram
+	write_ram_rev(EPD_WD, EPD_HT, &frameBuffer[0]);
+	write_command(0x22, 0xC7);
+	write_command(0x20);
+	write_command(0xFF);
 }
 
 

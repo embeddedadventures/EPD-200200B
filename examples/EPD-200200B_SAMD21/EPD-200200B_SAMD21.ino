@@ -1,5 +1,4 @@
 /*
-
 Copyright (c) 2017, Embedded Adventures, www.embeddedadventures.com
 All rights reserved.
 
@@ -32,48 +31,53 @@ THE POSSIBILITY OF SUCH DAMAGE.
 Contact us at admin [at] embeddedadventures.com
 */
 
-//EPD-200200B ePaper Display Arduino library
-//Written originally by Embedded Adventures
+//Sample sketch for the EPD-200200B ePaper Display
+//Used for a SAMD21-based Arduino board
 
-#ifndef	__SSD1607_h
-#define	__SSD1607_h
+#include <draw.h>
+#include <SSD1607.h>
 
-#include "config.h"
-#include "utils.h"
-#include "SPI.h"
-#include "draw.h"
-#include "draw_fonts.h"
-#include "ea_bitmaps.h"
+//These pins can be modified to any other pins you choose
+uns8 busyPin = 4;
+uns8 rstPin = 5;
+uns8 dcPin = 6;
+uns8 csPin = 7;
 
-#define		F_SSD1607	1000000UL
-#define		EPD_HT	200
-#define		EPD_WD	200	
+//Using a software-emulated SPI, so the pins can also be modified
+uns8 dataPin = 11;
+uns8 clkPin = 13;
 
-class SSD1607 {
-private:
-	uns8	_cs;
-	uns8	_dc;
-	uns8	_busy;
-	uns8	_rst;
-	uns8	_data;
-	uns8	_clk;
-	bool	_inverted;
-	bool	_spiEmulated;
-	
-	void	write_command(uns8 cmd);
-	void	write_command(uns8 cmd, uns8 param);
-	void	write_command(uns8* dataPtr, uns8 dataLen);
-	
-public:
-	SSD1607(uns8 cs, uns8 dc, uns8 busy, uns8 rst);
-	SSD1607(uns8 data, uns8 clk, uns8 cs, uns8 dc, uns8 busy, uns8 rst);
-	void	init();
-	void	power_on();
-	void	invert(bool en);
-	void	set_ram_area(uns8 xStart, uns8 xEnd, uns8 yStart, uns8 yStart1, uns8 yEnd, uns8 yEnd1);
-	void 	set_ram_ptr(uns8 xAddr, uns8 yAddr, uns8 yAddr1);
-	void	displayFullRev(uns8* frameBuffer);
-	void	write_ram_rev(uns8 xSize, uns32 ySize, uns8* frameBuffer);
-};
+SSD1607 epd(dataPin, clkPin, csPin, dcPin, busyPin, rstPin);
 
-#endif
+void setup() {
+  SerialUSB.begin(115200);
+  //while (!SerialUSB);
+  SerialUSB.println("Welcome to the Embedded Adventures demo sketch for the EPD-200200B");
+  draw_init(EPD_HT, EPD_WD, 1);
+  draw_fonts_init();
+  epd.invert(true);
+  epd.init();
+  drawLogo(70, 175);
+}
+
+void loop() {
+
+}
+
+//This function is required in order to use the ePaper Display
+void drv_paint() {
+  epd.displayFullRev(draw_buffer);
+}
+
+void drawLogo(draw_x_type x, draw_y_type y) {
+  draw_clear_screen();
+  delay(100);
+  draw_bitmap(x, y-60, 1, embedded_bitmap);
+  draw_bitmap(x, y-75, 1, adventures_bitmap);
+  draw_bitmap(x, y, 1, e_big_bitmap);
+  draw_bitmap(x+30, y, 1, a_big_bitmap);
+  draw_fonts_print_str(DRAW_FONT_12DOUBLE_ID, x-10, y - 100, 128, 0, 2, "EPD-200200B");
+  draw_fonts_print_str(DRAW_FONT_10DOUBLE_ID, x-40, y - 120, 172, 0, 2, "200X200 EPAPER DISPLAY");
+  draw_paint();
+}
+
