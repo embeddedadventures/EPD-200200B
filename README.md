@@ -9,6 +9,8 @@ This module runs on a 3.3V power supply and 3.3V logic. If using a 5V MCU, place
 
 The driver requires the <a href="https://github.com/embeddedadventures/draw">Embedded Adventures graphics library</a> in order to display text and shapes. 
 
+*When installing the library to your libraries folder, make sure to move the folder "SSD1607" and not the "EPD-200200B".* 
+
 The Arduino sample sketches show the minimum functions necessary to display some text on the ePaper display. In addition to initializing the graphics library (draw and draw_font), the SSD1607 library needs to be initialized by calling the two functions
 
 	invert(true);
